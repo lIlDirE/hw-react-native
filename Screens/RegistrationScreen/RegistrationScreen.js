@@ -14,7 +14,7 @@ import {
   StyleSheet,
   TouchableWithoutFeedback,
 } from "react-native";
-
+import { useNavigation } from '@react-navigation/native';
 const backgroundPicture = require("../../img/Photo_BG.png");
 
 const RegistrationScreen = () => {
@@ -24,7 +24,7 @@ const RegistrationScreen = () => {
     password: "",
     avatar: "",
   };
-
+  const navigation = useNavigation();
   const [showPassword, setShowPassword] = useState(false);
   const [loginFocus, setLoginFocus] = useState(false);
   const [passwordFocus, setPasswordFocus] = useState(false);
@@ -168,7 +168,7 @@ const RegistrationScreen = () => {
             </TouchableOpacity>
             <View style={styles.registerView}>
               <Text style={styles.registerText}>Вже є акаунт?</Text>
-              <Text style={styles.registerLink}>Увійти</Text>
+              <Text style={styles.registerLink} onPress={() => navigation.navigate("Login")}>Увійти</Text>
             </View>
           </View>
         </KeyboardAvoidingView>

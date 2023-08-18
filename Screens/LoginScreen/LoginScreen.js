@@ -1,13 +1,12 @@
 import { StatusBar } from "expo-status-bar";
 import React, { useState } from "react";
-
+import { useNavigation } from '@react-navigation/native';
 import {
   KeyboardAvoidingView,
   Keyboard,
   View,
   Text,
   TextInput,
-  Image,
   ImageBackground,
   TouchableOpacity,
   StyleSheet,
@@ -21,7 +20,7 @@ const LoginScreen = () => {
     email: "",
     password: "",
   };
-
+  const navigation = useNavigation();
   const [showPassword, setShowPassword] = useState(false);
   const [passwordFocus, setPasswordFocus] = useState(false);
   const [emailFocus, setEmailFocus] = useState(false);
@@ -31,6 +30,7 @@ const LoginScreen = () => {
   const submitForm = () => {
     console.log(formObj);
     setFormObj(InitialState);
+	navigation.navigate("Home")
   };
 
   return (
@@ -101,8 +101,8 @@ const LoginScreen = () => {
               </Text>
             </TouchableOpacity>
             <View style={styles.registerView}>
-              <Text style={styles.registerText}>Немає акаунту?</Text>
-              <Text style={styles.registerLink}> Зареєструватися</Text>
+              <Text style={styles.registerText} >Немає акаунту?</Text>
+              <Text style={styles.registerLink} onPress={() => navigation.navigate("Registration")}> Зареєструватися</Text>
             </View>
           </View>
         </KeyboardAvoidingView>
