@@ -1,7 +1,7 @@
 import { StatusBar } from "expo-status-bar";
 import React, { useState } from "react";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import moment from 'moment'
+import moment from "moment";
 
 import {
   KeyboardAvoidingView,
@@ -15,49 +15,50 @@ import {
   StyleSheet,
   TouchableWithoutFeedback,
 } from "react-native";
+import { useNavigation } from "@react-navigation/native";
 
 const InitialState = {
   img: "",
   users: {},
   owner: {
-	uid: "",
-	ownerName: "",
-	ownerAvatar: "",
-	messages: {},
+    uid: "",
+    ownerName: "",
+    ownerAvatar: "",
+    messages: {},
   },
 };
 
 const CommentsScreen = () => {
   const [messagesInfo, setMessagesInfo] = useState(InitialState);
   const [showKeyboard, setShowKeyboard] = useState(false);
-  const [newMessage, setNewMessage] = useState({message: ""});
+  const [newMessage, setNewMessage] = useState({ message: "" });
+  const navigation = useNavigation();
 
   const submitMessage = () => {
-	const now = moment();
-	const timestamp = new Date().getTime().toString();
-	const formattedDate = now.format('DD MMMM, YYYY | HH:mm');
-  
-	const newMessageObj = {
-	  message: newMessage.message,
-	  date: formattedDate,
-	};
-  
-	const updatedOwner = {
-	  ...messagesInfo.owner,
-	  messages: {
-		...messagesInfo.owner.messages,
-		[timestamp]: newMessageObj,
-	  },
-	};
-  
-	setMessagesInfo((prevState) => ({
-	  ...prevState,
-	  owner: updatedOwner,
-	}));
-  
-	setNewMessage({ message: ""});
+    const now = moment();
+    const timestamp = new Date().getTime().toString();
+    const formattedDate = now.format("DD MMMM, YYYY | HH:mm");
+
+    const newMessageObj = {
+      message: newMessage.message,
+      date: formattedDate,
+    };
+
+    const updatedOwner = {
+      ...messagesInfo.owner,
+      messages: {
+        ...messagesInfo.owner.messages,
+        [timestamp]: newMessageObj,
+      },
+    };
+
+    setMessagesInfo((prevState) => ({
+      ...prevState,
+      owner: updatedOwner,
+    }));
+
+    setNewMessage({ message: "" });
   };
-  
 
   return (
     <TouchableWithoutFeedback onPress={() => Keyboard.dismiss()}>
@@ -76,7 +77,7 @@ const CommentsScreen = () => {
               name="arrow-back-outline"
               style={styles.navBack}
               size={25}
-              //   onPress={navToCreate}
+              onPress={() => navigation.navigate("Home")}
             ></Ionicons>
           </View>
           <View style={styles.mainDiv}>
@@ -90,39 +91,47 @@ const CommentsScreen = () => {
                 )}
               </View>
               <ScrollView contentContainerStyle={styles.commentsDiv}>
-      {Object.values(messagesInfo.owner.messages).map((message, index) => (
-        <View key={index} style={styles.commentsMessageUser}>
-          <Text>{message.message}</Text>
-          <Text>{message.date}</Text>
-        </View>
-      ))}
+                {Object.values(messagesInfo.owner.messages).map(
+                  (message, index) => (
+                    <View key={index} style={styles.commentsMessageUser}>
+                      <Text>{message.message}</Text>
+                      <Text>{message.date}</Text>
+                    </View>
+                  )
+                )}
               </ScrollView>
             </View>
           </View>
           <View style={styles.footer}>
-		  <View>
-            <TextInput
-              style={[styles.input, {paddingLeft: 15}]}
-              placeholder="Коментувати..."
-              value={messagesInfo.messages}
-              onFocus={() => {
-                setShowKeyboard(true);
-              }}
-              onBlur={() => {
-                setShowKeyboard(false);
-              }}
-              onChangeText={(value) =>
-                setNewMessage((prevState) => ({ ...prevState, message: value }))
-              }
-            />
-			<TouchableOpacity style={styles.sendButton} onPress={submitMessage}>
-			<Ionicons
-              name="arrow-up-outline"
-              style={styles.sendArrowIcon}
-              size={25}
-            ></Ionicons>
-			</TouchableOpacity>
-			</View>
+            <View>
+              <TextInput
+                style={[styles.input, { paddingLeft: 15 }]}
+                placeholder="Коментувати..."
+                value={messagesInfo.messages}
+                onFocus={() => {
+                  setShowKeyboard(true);
+                }}
+                onBlur={() => {
+                  setShowKeyboard(false);
+                }}
+                onChangeText={(value) =>
+                  setNewMessage((prevState) => ({
+                    ...prevState,
+                    message: value,
+                  }))
+                }
+              />
+              <TouchableOpacity
+                style={styles.sendButton}
+                onPress={submitMessage}
+              >
+                <Ionicons
+                  name="arrow-up-outline"
+                  style={styles.sendArrowIcon}
+                  size={25}
+                ></Ionicons>
+              </TouchableOpacity>
+            </View>
           </View>
           <StatusBar style="auto" />
         </View>
@@ -132,7 +141,6 @@ const CommentsScreen = () => {
 };
 
 const styles = StyleSheet.create({
-
   header: {
     width: "100%",
     height: 90,
@@ -161,9 +169,9 @@ const styles = StyleSheet.create({
   },
 
   mainDiv: {
-	height: "91%",
-	display: "flex",
-	justifyContent: "space-between",
+    height: "91%",
+    display: "flex",
+    justifyContent: "space-between",
     alignItems: "center",
     marginTop: 32,
   },
@@ -185,20 +193,20 @@ const styles = StyleSheet.create({
     width: 345,
     paddingLeft: 8,
     color: "#BDBDBD",
-	backgroundColor: "#F6F6F6",
+    backgroundColor: "#F6F6F6",
     fontSize: 16,
     fontWeight: 400,
-	borderRadius: 20,
+    borderRadius: 20,
   },
 
   sendButton: {
-	position: "absolute",
-	top: 22,
-	right: 8,
-	width: 35,
-	height: 35,
-	backgroundColor: "#FF6C00",
-	borderRadius: 50,
+    position: "absolute",
+    top: 22,
+    right: 8,
+    width: 35,
+    height: 35,
+    backgroundColor: "#FF6C00",
+    borderRadius: 50,
   },
 
   sendArrowIcon: {
@@ -209,33 +217,33 @@ const styles = StyleSheet.create({
   },
 
   commentsDiv: {
-	width: "100%",
-	display: "flex",
-	alignItems: "flex-end",
-},
+    width: "100%",
+    display: "flex",
+    alignItems: "flex-end",
+  },
 
   commentsMessageUser: {
-	marginLeft: 44,
-	width: 300,
-	minHeight: 70,
-	paddingHorizontal: 16, 
-	paddingBottom: 35,
-	paddingTop: 16,
-	backgroundColor: "rgba(0, 0, 0, 0.03)",
-	marginTop: 24,
-	borderRadius: 16,
-	borderTopLeftRadius: 0,
+    marginLeft: 44,
+    width: 300,
+    minHeight: 70,
+    paddingHorizontal: 16,
+    paddingBottom: 35,
+    paddingTop: 16,
+    backgroundColor: "rgba(0, 0, 0, 0.03)",
+    marginTop: 24,
+    borderRadius: 16,
+    borderTopLeftRadius: 0,
   },
 
   commentsMessageOwner: {
-	marginRight: 44,
-	width: 300,
-	minHeight: 70,
-	paddingHorizontal: 16, 
-	paddingBottom: 35,
-	paddingTop: 16,
-	backgroundColor: "rgba(0, 0, 0, 0.03)",
-	marginTop: 24,
+    marginRight: 44,
+    width: 300,
+    minHeight: 70,
+    paddingHorizontal: 16,
+    paddingBottom: 35,
+    paddingTop: 16,
+    backgroundColor: "rgba(0, 0, 0, 0.03)",
+    marginTop: 24,
   },
 
   footer: {
@@ -246,7 +254,6 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
     paddingTop: 10,
   },
-
 });
 
 export default CommentsScreen;

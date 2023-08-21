@@ -28,7 +28,6 @@ const LoginScreen = () => {
   const [formObj, setFormObj] = useState(InitialState);
 
   const submitForm = () => {
-    console.log(formObj);
     setFormObj(InitialState);
 	navigation.navigate("Home")
   };

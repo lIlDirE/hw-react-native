@@ -1,7 +1,10 @@
 import { StatusBar } from "expo-status-bar";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import * as ImagePicker from "expo-image-picker";
+import * as Location from "expo-location";
+import { Camera } from "expo-camera";
+import * as MediaLibrary from "expo-media-library";
+
 import {
   KeyboardAvoidingView,
   Keyboard,
@@ -19,13 +22,19 @@ const InitialState = {
   name: "",
   location: "",
   avatar: "",
+  coords: "",
+  messages: {},
+  messagesCounter: 0,
 };
 
 const CreatePostScreen = () => {
-	const navigation = useNavigation();
+  const navigation = useNavigation();
   const [formObj, setFormObj] = useState(InitialState);
   const [showKeyboard, setShowKeyboard] = useState(false);
   const [validationError, setValidationError] = useState("");
+  const [hasPermission, setHasPermission] = useState(null);
+  const [cameraRef, setCameraRef] = useState(null);
+  const [type, setType] = useState(Camera.Constants.Type.back);
 
   const removeImage = () => {
     setFormObj(InitialState);
@@ -36,30 +45,89 @@ const CreatePostScreen = () => {
     if (!formObj.avatar || !formObj.name || !formObj.location) {
       setValidationError("Please fill in all required fields.");
     } else {
-      console.log(formObj);
-      setFormObj(InitialState);
       setValidationError("");
+      navigation.navigate("Home", {formObj});
+	  setFormObj(InitialState);
     }
   };
 
-  const pickImage = async () => {
-    let result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Photo,
-      allowsEditing: true,
-      aspect: [4, 3],
-      quality: 1,
-    });
+  useEffect(() => {
+    (async () => {
+      const { status } = await Camera.requestCameraPermissionsAsync();
+      await MediaLibrary.requestPermissionsAsync();
+      setHasPermission(status === "granted");
+    })();
+  }, []);
 
-    if (!result.cancelled) {
+  const getLocation = async () => {
+    try {
+      const { coords } = await Location.getCurrentPositionAsync();
+
+      if (coords) {
+        const { latitude, longitude } = coords;
+        const response = await Location.reverseGeocodeAsync({
+          latitude,
+          longitude,
+        });
+
+        if (response.length > 0) {
+          const item = response[0]; // Мы используем первый элемент response
+          const { region, country, street } = item;
+          const address = `${region}, ${country}`;
+
+          setFormObj((prevState) => ({
+            ...prevState,
+			location: address,
+            coords: {latitude: `${coords.latitude}`, longitude: `${coords.longitude}`},
+          }));
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching address:", error);
+    }
+  };
+
+
+  const takePicture = async () => {
+    if (cameraRef) {
+      const { uri } = await cameraRef.takePictureAsync();
       setFormObj((prevState) => ({
         ...prevState,
-        avatar: result.assets[0].uri,
+        avatar: uri,
       }));
     }
   };
 
-  const navToCreate = () => {
-    console.log("click");
+  const renderCamera = () => {
+    return (
+      <Camera style={styles.camera} type={type} ref={setCameraRef}>
+        <View style={styles.photoView} >
+          {hasPermission ? (
+            <View style={styles.addIconBgDefault} >
+              <Ionicons
+                name="camera"
+                style={styles.addIconDefault}
+                size={25}
+				onPress={takePicture}
+              ></Ionicons>
+            </View>
+          ) : (
+            <Text>No access to camera</Text>
+          )}
+        </View>
+      </Camera>
+    );
+  };
+
+  const renderImage = () => {
+    return (
+      <View style={styles.imgDiv}>
+        <Image source={{ uri: formObj.avatar }} style={styles.avatarImage} />
+        <View style={styles.addIconBG}>
+          <Ionicons name="camera" style={styles.addIcon} size={25}></Ionicons>
+        </View>
+      </View>
+    );
   };
 
   return (
@@ -70,7 +138,7 @@ const CreatePostScreen = () => {
         <View
           style={{
             ...styles.mainDiv,
-            marginTop: showKeyboard ? -90 : 0,
+            marginTop: showKeyboard ? -75 : 0,
           }}
         >
           <View style={styles.header}>
@@ -85,29 +153,8 @@ const CreatePostScreen = () => {
           <View style={styles.mainDiv}>
             <View>
               <View style={styles.imgDiv}>
-                {formObj.avatar && (
-                  <Image
-                    source={{ uri: formObj.avatar }}
-                    style={styles.avatarImage}
-                  ></Image>
-                )}
-                <View
-                  style={
-                    formObj.avatar === ""
-                      ? styles.addIconBgDefault
-                      : styles.addIconBG
-                  }
-                >
-                  <Ionicons
-                    name="camera"
-                    style={
-                      formObj.avatar === ""
-                        ? styles.addIconDefault
-                        : styles.addIcon
-                    }
-                    size={25}
-                    onPress={pickImage}
-                  ></Ionicons>
+                <View style={styles.container}>
+                  {formObj.avatar ? renderImage() : renderCamera()}
                 </View>
               </View>
               {formObj.avatar === "" ? (
@@ -134,7 +181,7 @@ const CreatePostScreen = () => {
               <TextInput
                 style={[styles.input, { paddingLeft: 30, marginTop: 15 }]}
                 placeholder="Місцевість..."
-                value={formObj.location}
+				value={formObj.location}
                 onFocus={() => {
                   setShowKeyboard(true);
                 }}
@@ -149,10 +196,10 @@ const CreatePostScreen = () => {
                 name="location-outline"
                 style={styles.geoIcon}
                 size={25}
-                onPress={pickImage}
+                onPress={getLocation}
               ></Ionicons>
             </View>
-			{validationError !== "" && (
+            {validationError !== "" && (
               <Text style={styles.errorText}>{validationError}</Text>
             )}
             <TouchableOpacity
@@ -165,7 +212,7 @@ const CreatePostScreen = () => {
             >
               <Text
                 style={
-					formObj.avatar && formObj.name && formObj.location
+                  formObj.avatar && formObj.name && formObj.location
                     ? styles.addText
                     : styles.addTextDisabled
                 }
@@ -173,8 +220,6 @@ const CreatePostScreen = () => {
                 Опубліковати
               </Text>
             </TouchableOpacity>
-
-
           </View>
           <View style={styles.footer}>
             <TouchableOpacity style={styles.clearButton}>
@@ -194,14 +239,6 @@ const CreatePostScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  errorText: {
-		position: "absolute",
-		top: 425,
-    color: "red",
-    fontSize: 16,
-    textAlign: "center",
-
-  },
   mainText: {
     marginTop: 10,
     color: "#BDBDBD",
@@ -253,10 +290,15 @@ const styles = StyleSheet.create({
     backgroundColor: "#F6F6F6",
   },
   avatarImage: {
+    position: "absolute",
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
     width: 345,
     height: 240,
+    borderColor: "#BDBDBD",
     borderRadius: 8,
-    position: "absolute",
+    backgroundColor: "#F6F6F6",
   },
   addIconDefault: {
     color: "#BDBDBD",
@@ -312,6 +354,53 @@ const styles = StyleSheet.create({
     marginTop: 30,
     width: 345,
   },
+  container: { flex: 1 },
+  camera: {
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    width: 345,
+    height: 240,
+    borderColor: "#BDBDBD",
+    borderRadius: 8,
+    backgroundColor: "#F6F6F6",
+  },
+  photoView: {
+    backgroundColor: "transparent",
+    justifyContent: "flex-end",
+  },
+
+  flipContainer: {
+    flex: 0.2,
+    justifyContent: "flex-end",
+
+    alignSelf: "flex-end",
+  },
+
+  button: {
+    display: "flex",
+    justifyContent: "center",
+  },
+
+  takePhotoOut: {
+    borderWidth: 2,
+    borderColor: "white",
+    height: 50,
+    width: 50,
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    borderRadius: 50,
+  },
+
+  takePhotoInner: {
+    borderWidth: 2,
+    borderColor: "white",
+    height: 40,
+    width: 40,
+    backgroundColor: "white",
+    borderRadius: 50,
+  },
 
   clearButton: {
     borderRadius: 100,
@@ -357,7 +446,7 @@ const styles = StyleSheet.create({
 
   footer: {
     width: "100%",
-    height: 190,
+    height: 160,
     display: "flex",
     alignItems: "center",
     justifyContent: "flex-end",
