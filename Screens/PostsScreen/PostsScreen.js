@@ -199,7 +199,7 @@ const styles = StyleSheet.create({
     width: 345,
     height: 240,
     backgroundColor: "grey",
-    borderRadius: 8,
+    borderRadius: 10,
   },
 
   postMessage: {
