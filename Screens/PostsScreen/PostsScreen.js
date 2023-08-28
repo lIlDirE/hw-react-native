@@ -1,48 +1,55 @@
 import { StatusBar } from "expo-status-bar";
 import React, { useEffect, useState } from "react";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { Dimensions } from "react-native";
-import { useRoute, useNavigation } from "@react-navigation/native";
-
+import { Dimensions, ImageBackground } from "react-native";
+import { useNavigation } from "@react-navigation/native";
 import { View, Text, TouchableOpacity, StyleSheet, Image } from "react-native";
+import { authSingOutUser } from "../../Redux/operations/authOpertions";
+import { useDispatch, useSelector } from "react-redux";
+import { collection, query, onSnapshot, Firestore } from "firebase/firestore";
+import { db } from "../../firebase/config";
+import { selectUserData } from "../../Redux/selectors/selectors";
+import { getAuth, onAuthStateChanged, currentUser } from "firebase/auth";
 
 const PostsScreen = () => {
   const navigation = useNavigation();
-  const route = useRoute();
-  const [postsObj, setPostsObj] = useState("");
+  const dispatch = useDispatch();
   const screenHeight = Dimensions.get("window").height;
   const adjustedHeight = screenHeight - 175;
+  const [user, setUser] = useState({})
+  const [postsObj, setPostsObj] = useState([]);
 
-  const createNewPost = (currentFormObj) => {
-    const id = Date.now();
+  const getAllPost = async () => {
+    const postsRef = collection(db, "posts");
 
-    setPostsObj((prevState) => ({
-      ...prevState,
-      [id]: currentFormObj,
-    }));
+    onSnapshot(postsRef, (snapshot) => {
+      const dataObject = {};
+      snapshot.forEach((doc) => {
+        dataObject[doc.id] = { ...doc.data(), id: doc.id };
+      });
+      setPostsObj(dataObject);
+    });
+  };
+
+  const getUserEmail = async () => {
+    const auth = await getAuth();
+    onAuthStateChanged(auth, (user) => {
+       setUser({
+		displayName: user.displayName,
+		email: user.email,
+		photoURL: user.photoURL,
+	  })
+    });
   };
 
   useEffect(() => {
-    let lastAddedPost = null;
-    let currentFormObj = null;
+    getUserEmail();
+    getAllPost();
+  }, []);
 
-    if (route.params !== undefined) {
-      currentFormObj = route.params.formObj;
-    } else {
-      return;
-    }
-
-    if (Object.values(postsObj).slice(-1)[0] !== undefined) {
-      lastAddedPost = Object.values(postsObj).slice(-1)[0];
-      if (currentFormObj === lastAddedPost) {
-        return;
-      } else {
-        createNewPost(currentFormObj);
-      }
-    } else {
-      createNewPost(currentFormObj);
-    }
-  }, [route.params]);
+  const logOut = () => {
+    dispatch(authSingOutUser());
+  };
 
   return (
     <View style={styles.container}>
@@ -52,19 +59,24 @@ const PostsScreen = () => {
           name="log-out-outline"
           style={styles.logoutIcon}
           size={25}
-          onPress={() => navigation.navigate("Login")}
+          onPress={logOut}
         ></Ionicons>
       </View>
       <View style={[styles.mainDiv, { height: adjustedHeight }]}>
         <View style={styles.profileCard}>
-          <Image style={styles.avatarImg}></Image>
-          <Text style={styles.avatarName}></Text>
-          <Text style={styles.avatarEmail}></Text>
+		<ImageBackground
+  style={styles.avatarImg}
+  source={{ uri: user.photoURL }}
+></ImageBackground>
+          <Text style={styles.avatarName}>{user.displayName}</Text>
+          <Text style={styles.avatarEmail}>{user.email}</Text>
         </View>
         <View style={styles.posts}>
           {postsObj &&
             Object.keys(postsObj).map((key) => {
               const post = postsObj[key];
+              const commentsCounter = Object.keys(post.messages).length;
+              const postId = key;
               return (
                 <View style={styles.postCard} key={key}>
                   <Image source={{ uri: post.avatar }} style={styles.postImg} />
@@ -77,13 +89,16 @@ const PostsScreen = () => {
                         style={styles.postIcon}
                         onPress={() =>
                           navigation.navigate("CommentsScreen", {
-                            messages: post.messages,
+                            postId: postId,
+                            nickName: user.nickName,
+                            avatarUser: user.avatarUser,
+                            userId: user.userId,
                           })
                         }
                         size={25}
                       ></Ionicons>
                       <Text style={styles.messagesCounter}>
-                        {post.messagesCounter}
+                        {commentsCounter}
                       </Text>
                       <Text></Text>
                     </View>
@@ -111,11 +126,11 @@ const PostsScreen = () => {
           name="grid-outline"
           style={styles.menuIcon}
           size={25}
-          onPress={() => navigation.navigate("Home")}
+          onPress={() => navigation.navigate("PostsScreen")}
         ></Ionicons>
         <TouchableOpacity
           style={styles.addButton}
-          onPress={() => navigation.navigate("CreatePostsScreen")}
+          onPress={() => navigation.navigate("CreatePostScreen")}
         >
           <Ionicons
             name="add-outline"
@@ -166,12 +181,6 @@ const styles = StyleSheet.create({
     right: 15,
     bottom: 7,
     color: "#BDBDBD",
-  },
-
-  mainDiv: {
-    // display: "flex",
-    // justifyContent: "flex-start",
-    // 	borderWidth: 1,
   },
 
   posts: {

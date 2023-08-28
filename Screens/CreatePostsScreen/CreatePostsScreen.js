@@ -4,7 +4,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import * as Location from "expo-location";
 import { Camera } from "expo-camera";
 import * as MediaLibrary from "expo-media-library";
-
+import { collection, addDoc } from "firebase/firestore";
 import {
   KeyboardAvoidingView,
   Keyboard,
@@ -17,6 +17,9 @@ import {
   TouchableWithoutFeedback,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
+import { uriToBlob } from "../../helpers/uriToBlob";
+import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
+import { auth, db, storage } from "../../firebase/config";
 
 const InitialState = {
   name: "",
@@ -24,30 +27,35 @@ const InitialState = {
   avatar: "",
   coords: "",
   messages: {},
-  messagesCounter: 0,
 };
 
 const CreatePostScreen = () => {
   const navigation = useNavigation();
-  const [formObj, setFormObj] = useState(InitialState);
   const [showKeyboard, setShowKeyboard] = useState(false);
   const [validationError, setValidationError] = useState("");
   const [hasPermission, setHasPermission] = useState(null);
+
   const [cameraRef, setCameraRef] = useState(null);
   const [type, setType] = useState(Camera.Constants.Type.back);
 
-  const removeImage = () => {
+  const [formObj, setFormObj] = useState(InitialState);
+ 
+  const removeData = () => {
     setFormObj(InitialState);
     setValidationError("");
   };
 
-  const submitForm = () => {
+  const submitForm = async () => {
     if (!formObj.avatar || !formObj.name || !formObj.location) {
       setValidationError("Please fill in all required fields.");
     } else {
-      setValidationError("");
-      navigation.navigate("Home", {formObj});
-	  setFormObj(InitialState);
+      try {
+        writeDataToFirestore();
+        navigation.navigate("PostsScreen");
+        removeData();
+      } catch (error) {
+		console.error("Error during form submission:", error);
+	  }
     }
   };
 
@@ -77,8 +85,11 @@ const CreatePostScreen = () => {
 
           setFormObj((prevState) => ({
             ...prevState,
-			location: address,
-            coords: {latitude: `${coords.latitude}`, longitude: `${coords.longitude}`},
+            location: address,
+            coords: {
+              latitude: `${coords.latitude}`,
+              longitude: `${coords.longitude}`,
+            },
           }));
         }
       }
@@ -87,10 +98,10 @@ const CreatePostScreen = () => {
     }
   };
 
-
   const takePicture = async () => {
     if (cameraRef) {
       const { uri } = await cameraRef.takePictureAsync();
+
       setFormObj((prevState) => ({
         ...prevState,
         avatar: uri,
@@ -98,17 +109,49 @@ const CreatePostScreen = () => {
     }
   };
 
+  const uploadImageToStorage = async () => {
+    try {
+      const file = await uriToBlob(formObj.avatar);
+      const uniquePostId = Date.now().toString();
+      const storageImage = ref(storage, `postImage/${uniquePostId}`);
+      await uploadBytes(storageImage, file);
+      const addedPhoto = await getDownloadURL(storageImage);
+	  return addedPhoto
+    } catch (error) {
+      console.error("Error uploading image:", error);
+    }
+  };
+
+  const writeDataToFirestore = async () => {
+    try {
+	  const { uid } = auth.currentUser;
+	  const imageUrl = await uploadImageToStorage()
+      await addDoc(collection(db, "posts"), {
+        avatar: imageUrl,
+        coords: formObj.coords,
+        location: formObj.location,
+        messages: formObj.messages,
+        name: formObj.name,
+		userId: uid
+      });
+    } catch (e) {
+      console.error("Error adding document: ", e);
+      throw e;
+    }
+  };
+
+
   const renderCamera = () => {
     return (
       <Camera style={styles.camera} type={type} ref={setCameraRef}>
-        <View style={styles.photoView} >
+        <View style={styles.photoView}>
           {hasPermission ? (
-            <View style={styles.addIconBgDefault} >
+            <View style={styles.addIconBgDefault}>
               <Ionicons
                 name="camera"
                 style={styles.addIconDefault}
                 size={25}
-				onPress={takePicture}
+                onPress={takePicture}
               ></Ionicons>
             </View>
           ) : (
@@ -147,7 +190,7 @@ const CreatePostScreen = () => {
               name="arrow-back-outline"
               style={styles.navBack}
               size={25}
-              onPress={() => navigation.navigate("Home")}
+              onPress={() => navigation.navigate("PostsScreen")}
             ></Ionicons>
           </View>
           <View style={styles.mainDiv}>
@@ -181,7 +224,7 @@ const CreatePostScreen = () => {
               <TextInput
                 style={[styles.input, { paddingLeft: 30, marginTop: 15 }]}
                 placeholder="Місцевість..."
-				value={formObj.location}
+                value={formObj.location}
                 onFocus={() => {
                   setShowKeyboard(true);
                 }}
@@ -227,7 +270,7 @@ const CreatePostScreen = () => {
                 name="trash-outline"
                 style={styles.plusIcon}
                 size={25}
-                onPress={removeImage}
+                onPress={removeData}
               ></Ionicons>
             </TouchableOpacity>
           </View>

@@ -17,7 +17,12 @@ import {
 import { useNavigation } from '@react-navigation/native';
 const backgroundPicture = require("../../img/Photo_BG.png");
 
+import { useDispatch } from "react-redux";
+import { authSingUpUser } from "../../Redux/operations/authOpertions";
+import { uploadImageAndSaveToFirestore } from "../../helpers/uploadImageAndSaveToFirestore";
+
 const RegistrationScreen = () => {
+  const dispatch = useDispatch();	
   const InitialState = {
     login: "",
     email: "",
@@ -55,9 +60,21 @@ const RegistrationScreen = () => {
       }));
   }
 
-  const submitForm = () => {
-    console.log(formObj);
-    setFormObj(InitialState);
+  const submitForm  = async () => {
+
+	const avatar = await uploadImageAndSaveToFirestore(formObj.avatar);
+	try {
+		await dispatch(authSingUpUser({
+			email: formObj.email,
+			password: formObj.password,
+			login: formObj.login,
+			avatar: avatar,
+		  }));
+	} catch (error) {
+		console.log(error);
+	}
+		setFormObj(InitialState);
+		navigation.navigate("PostsScreen")
   };
 
   return (

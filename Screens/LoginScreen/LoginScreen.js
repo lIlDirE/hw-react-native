@@ -1,6 +1,8 @@
 import { StatusBar } from "expo-status-bar";
 import React, { useState } from "react";
 import { useNavigation } from '@react-navigation/native';
+import { loginAuth } from "../../Redux/slices/authSlice";
+import { authSingInUser } from "../../Redux/operations/authOpertions";
 import {
   KeyboardAvoidingView,
   Keyboard,
@@ -12,10 +14,12 @@ import {
   StyleSheet,
   TouchableWithoutFeedback,
 } from "react-native";
+import { useDispatch } from "react-redux";
 
 const backgroundPicture = require("../../img/Photo_BG.png");
 
 const LoginScreen = () => {
+	const dispatch = useDispatch();
   const InitialState = {
     email: "",
     password: "",
@@ -29,7 +33,10 @@ const LoginScreen = () => {
 
   const submitForm = () => {
     setFormObj(InitialState);
-	navigation.navigate("Home")
+	dispatch(authSingInUser({ 
+		email: formObj.email, 
+		password: formObj.password
+	 }));
   };
 
   return (

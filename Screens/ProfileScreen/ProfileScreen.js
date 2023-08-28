@@ -83,7 +83,7 @@ const ProfileScreen = () => {
             name="grid-outline"
             style={styles.menuIcon}
             size={25}
-            onPress={() => navigation.navigate("Home")}
+            onPress={() => navigation.navigate("PostsScreen")}
           ></Ionicons>
           <TouchableOpacity
             style={styles.addButton}

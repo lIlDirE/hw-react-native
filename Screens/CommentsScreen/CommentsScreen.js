@@ -1,5 +1,5 @@
 import { StatusBar } from "expo-status-bar";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import moment from "moment";
 
@@ -15,49 +15,74 @@ import {
   StyleSheet,
   TouchableWithoutFeedback,
 } from "react-native";
-import { useNavigation } from "@react-navigation/native";
-
-const InitialState = {
-  img: "",
-  users: {},
-  owner: {
-    uid: "",
-    ownerName: "",
-    ownerAvatar: "",
-    messages: {},
-  },
-};
+import { useNavigation, useRoute } from "@react-navigation/native";
+import {
+  addDoc,
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  onSnapshot,
+  query,
+  updateDoc,
+} from "firebase/firestore";
+import { db } from "../../firebase/config";
+import { format } from "date-fns";
 
 const CommentsScreen = () => {
-  const [messagesInfo, setMessagesInfo] = useState(InitialState);
-  const [showKeyboard, setShowKeyboard] = useState(false);
-  const [newMessage, setNewMessage] = useState({ message: "" });
+  const route = useRoute();
   const navigation = useNavigation();
+  const { postId, nickName, avatarUser, userId } = route.params;
+  const [showKeyboard, setShowKeyboard] = useState(false);
+  const [messageText, setMessageText] = useState("");
+  const [allMessages, setAllMessages] = useState([]);
 
-  const submitMessage = () => {
-    const now = moment();
-    const timestamp = new Date().getTime().toString();
-    const formattedDate = now.format("DD MMMM, YYYY | HH:mm");
+  const getAllPost = async () => {
+    const ref = doc(db, "posts", postId);
+    const docSnap = await getDoc(ref);
+    const prevData = docSnap.data();
+    setAllMessages(prevData.messages);
+  };
 
-    const newMessageObj = {
-      message: newMessage.message,
-      date: formattedDate,
+  useEffect(() => {
+    getAllPost();
+  }, []);
+
+  const submitMessage = async () => {
+    Keyboard.dismiss();
+    if (messageText.trim() === "") {
+      return;
+    }
+    const timestamp = new Date().getTime();
+    const data = format(new Date(), "dd MMMM yyyy | HH : mm");
+    const newComment = {
+      messageText,
+      data,
+      nickName,
+      userId,
+      avatarUser,
     };
 
-    const updatedOwner = {
-      ...messagesInfo.owner,
-      messages: {
-        ...messagesInfo.owner.messages,
-        [timestamp]: newMessageObj,
-      },
-    };
+    try {
+      const ref = doc(db, "posts", postId);
+      const docSnap = await getDoc(ref);
+      if (docSnap.exists()) {
+        const prevData = docSnap.data();
+        const prevMessages = prevData.messages || {}; // Если нет сообщений, создаем пустой объект
+        const updatedMessages = {
+          ...prevMessages,
+          [timestamp]: newComment, // Добавляем новый комментарий к предыдущим
+        };
 
-    setMessagesInfo((prevState) => ({
-      ...prevState,
-      owner: updatedOwner,
-    }));
-
-    setNewMessage({ message: "" });
+        await updateDoc(ref, {
+          messages: updatedMessages,
+        });
+      }
+    } catch (error) {
+      console.log(error);
+    }
+    getAllPost();
+	setMessageText("");
   };
 
   return (
@@ -77,49 +102,46 @@ const CommentsScreen = () => {
               name="arrow-back-outline"
               style={styles.navBack}
               size={25}
-              onPress={() => navigation.navigate("Home")}
+              onPress={() => navigation.navigate("PostsScreen")}
             ></Ionicons>
           </View>
           <View style={styles.mainDiv}>
-            <View>
-              <View style={styles.imgDiv}>
-                {messagesInfo.img && (
-                  <Image
-                    source={{ uri: messagesInfo.img }}
-                    style={styles.avatarImage}
-                  ></Image>
-                )}
-              </View>
-              <ScrollView contentContainerStyle={styles.commentsDiv}>
-                {Object.values(messagesInfo.owner.messages).map(
-                  (message, index) => (
-                    <View key={index} style={styles.commentsMessageUser}>
-                      <Text>{message.message}</Text>
-                      <Text>{message.date}</Text>
+            {allMessages &&
+              Object.keys(allMessages).map((key) => {
+                const comment = allMessages[key];
+                return (
+                  <View key={key}>
+                    <View style={styles.imgDiv}>
+                      {comment.avatarUser && (
+                        <Image
+                          source={comment.avatarUser}
+                          style={styles.avatarImage}
+                        ></Image>
+                      )}
                     </View>
-                  )
-                )}
-              </ScrollView>
-            </View>
+                    <View contentContainerStyle={styles.commentsDiv}>
+                      <View style={styles.commentsMessageUser}>
+                        <Text>{comment.messageText}</Text>
+                        <Text>{comment.data}</Text>
+                      </View>
+                    </View>
+                  </View>
+                );
+              })}
           </View>
           <View style={styles.footer}>
             <View>
               <TextInput
                 style={[styles.input, { paddingLeft: 15 }]}
                 placeholder="Коментувати..."
-                value={messagesInfo.messages}
+                value={messageText}
                 onFocus={() => {
                   setShowKeyboard(true);
                 }}
                 onBlur={() => {
                   setShowKeyboard(false);
                 }}
-                onChangeText={(value) =>
-                  setNewMessage((prevState) => ({
-                    ...prevState,
-                    message: value,
-                  }))
-                }
+                onChangeText={(value) => setMessageText(value)}
               />
               <TouchableOpacity
                 style={styles.sendButton}
@@ -171,7 +193,7 @@ const styles = StyleSheet.create({
   mainDiv: {
     height: "91%",
     display: "flex",
-    justifyContent: "space-between",
+    justifyContent: "flex-start",
     alignItems: "center",
     marginTop: 32,
   },
@@ -180,8 +202,6 @@ const styles = StyleSheet.create({
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
-    width: 345,
-    height: 240,
     borderColor: "#BDBDBD",
     borderRadius: 8,
     backgroundColor: "#F6F6F6",
@@ -236,14 +256,14 @@ const styles = StyleSheet.create({
   },
 
   commentsMessageOwner: {
-    marginRight: 44,
-    width: 300,
-    minHeight: 70,
-    paddingHorizontal: 16,
-    paddingBottom: 35,
-    paddingTop: 16,
-    backgroundColor: "rgba(0, 0, 0, 0.03)",
-    marginTop: 24,
+    // marginRight: 44,
+    // width: 300,
+    // minHeight: 70,
+    // paddingHorizontal: 16,
+    // paddingBottom: 35,
+    // paddingTop: 16,
+    // backgroundColor: "rgba(0, 0, 0, 0.03)",
+    // marginTop: 24,
   },
 
   footer: {

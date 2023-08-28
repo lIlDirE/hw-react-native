@@ -1,32 +1,20 @@
-
-import { StyleSheet, Text, View } from 'react-native';
-import { NavigationContainer } from "@react-navigation/native";
-import { createStackNavigator } from "@react-navigation/stack";
-import RegistrationScreen from './Screens/RegistrationScreen/RegistrationScreen';
-import LoginScreen from './Screens/LoginScreen/LoginScreen';
-import PostsScreen from './Screens/PostsScreen/PostsScreen';
-import ProfileScreen from './Screens/ProfileScreen/ProfileScreen';
-import CommentsScreen from './Screens/CommentsScreen/CommentsScreen';
-
-import CreatePostsScreen from './Screens/CreatePostsScreen/CreatePostsScreen';
-import MapScreen from './Screens/MapScreen/MapScreen';
-
-const MainStack = createStackNavigator();
+import React from 'react';
+import { Provider, useSelector} from 'react-redux';
+import { PersistGate } from 'redux-persist/integration/react';
+import { store, persistor } from './Redux/store'; // Проверьте путь к вашему store
+import "react-native-gesture-handler";
+import { Main } from './Components/Main';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 export default function App() {
 
   return (
-    <NavigationContainer>
-      <MainStack.Navigator initialRouteName="Login">
-        <MainStack.Screen name="Registration" component={RegistrationScreen} options={{ headerShown: false }} />{/* Аналог Route */}
-        <MainStack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
-        <MainStack.Screen name="Home" component={PostsScreen} options={{ headerShown: false }} />
-        <MainStack.Screen name="MapScreen" component={MapScreen} />
-
-		<MainStack.Screen name="CreatePostsScreen" component={CreatePostsScreen} options={{ headerShown: false }} />
-		<MainStack.Screen name="ProfileScreen" component={ProfileScreen} options={{ headerShown: false }} />
-		<MainStack.Screen name="CommentsScreen" component={CommentsScreen} options={{ headerShown: false }} />
-      </MainStack.Navigator>
-    </NavigationContainer>
-  )
+	<GestureHandlerRootView style={{ flex: 1 }}>
+	<Provider store={store}>
+	   <PersistGate loading={null} persistor={persistor}>
+		  <Main />
+	   </PersistGate>
+	</Provider>
+ </GestureHandlerRootView>
+  );
 }
